@@ -1,0 +1,36 @@
+// A10b: forward validation of the gBGC switch-off estimator (nucleotide model, SLiM >= 5).
+// Chromosome = 3 segments of SEG bp: [0,SEG) "end" (high DSB rate throughout), [SEG,2SEG) "flank" (high until
+// the switch-off at TOFF generations before the present, then interior-like), [2SEG,3SEG) "interior" (low).
+// Gene conversion (non-crossover fraction NCOF, mean tract TRACT) biased towards G/C with probability BIAS.
+// After BURN generations of burn-in an ancestral haplosome is saved (the "split"); TS generations later one
+// present haplosome is compared with it: W->S and S->W derived-on-branch sites and ancestral W/S counts per segment.
+// Required -d: N, SEG, MU, RHI, RLO, NCOF, TRACT, BIAS, BURN, TS, TOFF, REP
+initialize() {
+    initializeSLiMOptions(nucleotideBased=T);
+    defineConstant("L", 3 * SEG);
+    initializeAncestralNucleotides(randomNucleotides(L, basis=c(0.29, 0.21, 0.21, 0.29)));
+    initializeMutationTypeNuc("m1", 0.5, "f", 0.0);
+    initializeGenomicElementType("g1", m1, 1.0, mmJukesCantor(MU / 3));
+    initializeGenomicElement(g1, 0, L - 1);
+    initializeRecombinationRate(c(RHI, RHI, RLO), c(SEG - 1, 2 * SEG - 1, L - 1));
+    initializeGeneConversion(NCOF, TRACT, 0.0, BIAS);   // complex tracts: GC bias acts on heteroduplex mismatch repair
+}
+1 early() { sim.addSubpop("p1", N); }
+BURN late() {
+    defineGlobal("ANC", sample(p1.haplosomes, 1).nucleotides(format="integer"));
+}
+// switch-off: TOFF generations before the end of the run (skipped when TOFF == 0, i.e. never switched off)
+1: early() {
+    if (TOFF > 0 & sim.cycle == BURN + TS - TOFF + 1)
+        sim.chromosome.setRecombinationRate(c(RHI, RLO, RLO), c(SEG - 1, 2 * SEG - 1, L - 1));
+}
+BURN + TS late() {
+    seq = sample(p1.haplosomes, 1).nucleotides(format="integer");
+    aW = (ANC == 0) | (ANC == 3); sW = (seq == 0) | (seq == 3);
+    for (k in 0:2) {
+        idx = (k * SEG):((k + 1) * SEG - 1);
+        ws = sum(aW[idx] & !sW[idx]); sw = sum(!aW[idx] & sW[idx]);
+        catn(paste(c("RES", REP, BIAS, TOFF, k, ws, sw, sum(aW[idx]), SEG - sum(aW[idx])), sep="\t"));
+    }
+    sim.simulationFinished();
+}

@@ -1,0 +1,19 @@
+# Conda environment used for the analyses (versions as run; newer minor versions should work).
+name: hsa2
+channels: [conda-forge, bioconda]
+dependencies:
+  - python=3.12
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib=3.10
+  - openpyxl
+  - msprime=1.4
+  - slim=5.2
+  - bcftools
+  - samtools
+  - minimap2
+  - ucsc-liftover
+  - r-base          # legacy 2022 reproduction (workflow/05_estimators/A0*.R)
+# Not on conda: Cactus v2.9.3 static binaries (hal2maf, halStats), downloaded by workflow/00_data/00_download_core.sh
+# Fonts for figures: Lato (falls back to DejaVu Sans)

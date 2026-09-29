@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.DS_Store
+data/
+logs/
+# regenerated outputs (the curated inputs under results/ are tracked)
+results/figures/*.pdf
+results/figures/*.png
+results/figures/numbers.tex
+results/figures/supp_tables.tex
+results/figures/Supplementary_Data_1.xlsx

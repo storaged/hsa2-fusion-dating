@@ -1,0 +1,23 @@
+// A10b smoke test: can SLiM 5 run a nucleotide model with GC-biased gene conversion, and do we recover a W->S excess?
+// 20 kb, N = 500, high recombination with non-crossover gene conversion biased towards G/C; compare to bias 0 via -d BIAS.
+initialize() {
+    defineConstant("L", 20000);
+    initializeSLiMOptions(nucleotideBased=T);
+    initializeAncestralNucleotides(randomNucleotides(L, basis=c(0.3, 0.2, 0.2, 0.3)));
+    initializeMutationTypeNuc("m1", 0.5, "f", 0.0);
+    initializeGenomicElementType("g1", m1, 1.0, mmJukesCantor(2.5e-6));
+    initializeGenomicElement(g1, 0, L - 1);
+    initializeRecombinationRate(2e-6);
+    initializeGeneConversion(0.8, 500, 1.0, BIAS);
+}
+1 early() { sim.addSubpop("p1", 500); }
+5000 late() {
+    anc = sim.chromosome.ancestralNucleotides(format="integer");
+    g = sample(p1.haplosomes, 1);
+    seq = g.nucleotides(format="integer");
+    aW = (anc == 0) | (anc == 3);
+    sW = (seq == 0) | (seq == 3);
+    ws = sum(aW & !sW); sw = sum(!aW & sW);
+    nW = sum(aW); nS = L - nW;
+    catn("BIAS=" + BIAS + " WS=" + ws + " SW=" + sw + " logodds=" + log((ws / sw) / (nW / nS)));
+}

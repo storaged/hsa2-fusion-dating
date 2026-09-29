@@ -1,0 +1,2 @@
+pan	lineages	T_hat	T_lo	T_hi	mu	sigma	cv_between_ends	tau_human	tau_pan	tau_gorilla	T_F2a	T_F2a_lo	T_F2a_hi	T_F2b	T_F2b_lo	T_F2b_hi
+chimp	human+pan+gorilla	3.0	1.9	3.9	0.47321692594514636	0.11141723308704965	0.23544642420496334	0.09508671530219022	0.09810511030402169	0.07988403002245587	2.1	-0.2	3.6	3.9	2.4	5.2

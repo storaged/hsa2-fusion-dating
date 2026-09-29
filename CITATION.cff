@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this code or these results, please cite the article (in preparation) and this repository."
+title: "hsa2-fusion-dating: dating the human chromosome 2 fusion from the recombination footprint of its former telomeres"
+type: software
+license: MIT
+repository-code: "https://github.com/storaged/hsa2-fusion-dating"
+version: "1.0.0"
+date-released: "2026-09-29"
+authors:
+  - family-names: Gogolewski
+    given-names: K.
+keywords:
+  - chromosome fusion
+  - human chromosome 2
+  - GC-biased gene conversion
+  - telomere-to-telomere genomes
+  - human evolution
