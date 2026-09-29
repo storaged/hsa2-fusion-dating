@@ -2,7 +2,9 @@
 Glyphs: capped rods = ancestral acrocentric chromosomes (black caps = telomeres); rod with a red band = fused
 chromosome 2 (junction); rod with an open waist = relic centromere; stacked blocks = segmental duplications;
 crossed tree = lineage sorting; chip = W->S substitutions; data/model/test icons in d.
-usage: python F_schematic.py results/figures
+Panel a: G-banded ideograms (GRCh38 cytobands, UCSC) of the ancestral 2A/2B and human chromosome 2, with public-domain
+PhyloPic silhouettes (see assets/SOURCES.txt).
+usage: python F_schematic.py results/figures [assets_dir=data/silhouettes]
 """
 import os
 import sys
@@ -14,6 +16,7 @@ from matplotlib import font_manager
 from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Rectangle
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "results/figures"
+ASSETS = sys.argv[2] if len(sys.argv) > 2 else "data/silhouettes"
 os.makedirs(OUT, exist_ok=True)
 for f in ("Regular", "Bold", "Italic"):
     p = f"/usr/share/fonts/truetype/lato/Lato-{f}.ttf"
@@ -27,7 +30,7 @@ mpl.rcParams.update({"font.family": ["Lato", "DejaVu Sans"], "font.size": 7, "ax
                      "ytick.color": C["ink2"], "xtick.labelsize": 6.5, "ytick.labelsize": 6.5,
                      "axes.spines.top": False, "axes.spines.right": False, "pdf.fonttype": 42,
                      "mathtext.fontset": "custom", "mathtext.rm": "Lato", "mathtext.it": "Lato:italic"})
-FIG_W, FIG_H = 180 * MM, 118 * MM
+FIG_W, FIG_H = 180 * MM, 100 * MM
 
 
 # ---------------------------------------------------------------- glyphs (unit box, equal aspect)
@@ -154,12 +157,95 @@ def letter(fig, x, y, s):
     fig.text(x, y, s, fontsize=9, fontweight="bold", ha="left", va="top")
 
 
-fig = plt.figure(figsize=(FIG_W, FIG_H))
+# ---------------------------------------------------------------- ideograms and silhouettes
+STAIN = {"gneg": "#f4f5f7", "gpos25": "#cfd2d7", "gpos50": "#a9adb4", "gpos75": "#7d828a", "gpos100": "#4a4f57",
+         "gvar": "#b9bdc4", "stalk": "#dfe2e6", "acen": "#d9dce1"}
+CB = [l.rstrip("\n").split("\t") for l in open(f"{ASSETS}/chr2_cytoband.tsv")]
+CB = [(int(a) / 1e6, int(b) / 1e6, st) for _, a, b, _, st in CB]
+FUS, CEN2A, CEN2B, CHRLEN = 113.57, 93.9, 132.0, 242.19
 
-# ---------------------------------------------------------------- a: three events on one timeline
-ax = fig.add_axes([0.04, 0.60, 0.42, 0.32])
+
+def ideogram(ax, x, y0, y1, start, end, width, telomeres=(True, True), junction=None, relic=None, cen=None):
+    """vertical G-banded chromosome for hg38 chr2 interval [start, end] Mb drawn from y0 (top) to y1 (bottom)"""
+    sc = (y1 - y0) / (end - start)
+    Y = lambda mb: y0 + (mb - start) * sc
+    for a, b, st in CB:
+        a, b = max(a, start), min(b, end)
+        if b <= a:
+            continue
+        ax.add_patch(Rectangle((x - width / 2, Y(a)), width, Y(b) - Y(a), fc=STAIN.get(st, "#f4f5f7"), ec="none"))
+    ax.plot([x - width / 2, x - width / 2], [Y(start), Y(end)], color=C["ink2"], lw=0.5)
+    ax.plot([x + width / 2, x + width / 2], [Y(start), Y(end)], color=C["ink2"], lw=0.5)
+    if cen is not None:                                       # centromeric constriction: two white notches
+        h = 3.5 * abs(sc)
+        for sgn in (-1, 1):
+            xe = x + sgn * (width / 2 + 0.002)
+            ax.add_patch(mpl.patches.Polygon([(xe, Y(cen) - h), (x + sgn * width * 0.12, Y(cen)), (xe, Y(cen) + h)],
+                                             closed=True, fc="white", ec=C["ink2"], lw=0.5, zorder=3))
+    cap = 0.012 * abs(y1 - y0) / 0.6
+    if telomeres[0]:
+        ax.add_patch(Rectangle((x - width / 2, Y(start) - np.sign(sc) * cap), width, np.sign(sc) * cap, fc=C["ink"], ec="none"))
+    if telomeres[1]:
+        ax.add_patch(Rectangle((x - width / 2, Y(end)), width, np.sign(sc) * cap, fc=C["ink"], ec="none"))
+    if junction is not None:
+        ax.add_patch(Rectangle((x - width * 0.75, Y(junction) - 0.6 * cap), width * 1.5, 1.2 * cap, fc=C["f2b"], ec="none", zorder=4))
+    if relic is not None:
+        ax.plot(x + width * 0.95, Y(relic), marker="<", ms=3.2, color=C["ink2"], mec="none")
+
+
+def silhouette(fig, name, rect, color="#8a8f98"):
+    img = plt.imread(f"{ASSETS}/{name}.png")
+    rgba = np.zeros_like(img)
+    rgb = mpl.colors.to_rgb(color)
+    rgba[..., 0], rgba[..., 1], rgba[..., 2] = rgb
+    rgba[..., 3] = img[..., 3] if img.shape[-1] == 4 else 1 - img[..., 0]
+    a = fig.add_axes(rect); a.imshow(rgba); a.set_aspect("equal"); a.axis("off")
+    return a
+
+
+fig = plt.figure(figsize=(FIG_W, FIG_H))
+TOP, MID = 0.975, 0.5
+
+# ---------------------------------------------------------------- a: the problem and the clock
+ax = fig.add_axes([0.0, 0.535, 0.30, 0.325]); ax.axis("off"); ax.set_xlim(0, 1); ax.set_ylim(1.06, -0.02)
+yt, yb = 0.0, 0.97
+# ancestral 2A and 2B (apes); telomeres at all ends, own centromeres
+ideogram(ax, 0.13, yt, yt + (yb - yt) * FUS / CHRLEN, 0, FUS, 0.07, cen=CEN2A)
+ideogram(ax, 0.27, yt + 0.06, yt + 0.06 + (yb - yt) * (CHRLEN - FUS) / CHRLEN, FUS, CHRLEN, 0.07, cen=CEN2B)
+ax.text(0.13, yt + (yb - yt) * FUS / CHRLEN + 0.03, "2A", ha="center", va="top", fontsize=6.3)
+ax.text(0.27, yt + 0.06 + (yb - yt) * (CHRLEN - FUS) / CHRLEN + 0.03, "2B", ha="center", va="top", fontsize=6.3)
+ax.annotate("", xy=(0.56, 0.5), xytext=(0.38, 0.5), arrowprops=dict(arrowstyle="-|>", color=C["ink2"], lw=0.9))
+ax.text(0.47, 0.46, "fusion", ha="center", va="bottom", fontsize=6, color=C["ink2"])
+# human chromosome 2
+ideogram(ax, 0.72, yt, yb, 0, CHRLEN, 0.07, junction=FUS, relic=CEN2B, cen=CEN2A)
+ax.text(0.72, yb + 0.03, "human chr2", ha="center", va="top", fontsize=6.3)
+ax.text(0.80, yt + (yb - yt) * FUS / CHRLEN - 0.005, "2q13 junction", ha="left", va="bottom", fontsize=5.8, color=C["f2b"])
+ax.text(0.80, yt + (yb - yt) * CEN2B / CHRLEN + 0.01, "relic\ncentromere", ha="left", va="top", fontsize=5.8, color=C["ink2"], linespacing=1.0)
+# silhouettes: apes above the ancestral pair, humans above chr2
+silhouette(fig, "chimp", [0.022, 0.875, 0.04, 0.075]); silhouette(fig, "gorilla", [0.064, 0.875, 0.05, 0.075])
+silhouette(fig, "human", [0.196, 0.87, 0.02, 0.085]); silhouette(fig, "neanderthal", [0.218, 0.87, 0.02, 0.085])
+# clock: W->S excess along the human branch
+axc = fig.add_axes([0.33, 0.57, 0.13, 0.33])
+ts = np.linspace(0, 6, 200)
+T_off = 2.8
+axc.plot(ts, ts * 0.1, color=C["ends"], lw=1.5)
+axc.plot(ts, np.minimum(ts, 6 - T_off) * 0.1, color=C["f2b"], lw=1.8)
+axc.plot(ts, ts * 0, color=C["interior"], lw=1.3, ls=(0, (3, 2)))
+axc.axvline(6 - T_off, color=C["ink2"], lw=0.6, ls=(0, (2, 2)))
+axc.annotate("", xy=(6.25, 0.6), xytext=(6.25, 0.32), arrowprops=dict(arrowstyle="<->", color=C["ink"], lw=0.8))
+axc.text(6.4, 0.46, "lost:\n$T_{off}/T_s$", fontsize=6, va="center", linespacing=1.1)
+axc.text(3.1, 0.47, "real ends", fontsize=6, color=C["ends"], ha="right")
+axc.text(4.9, 0.27, "fusion\nflanks", fontsize=6, color=C["f2b"], ha="center", va="top", linespacing=1.0)
+axc.text(4.9, 0.02, "interior", fontsize=6, color=C["ink2"], ha="center", va="bottom")
+axc.set_xticks([0, 6 - T_off, 6], ["split", "$T_{off}$", "now"]); axc.set_yticks([])
+axc.set_xlim(0, 8.3); axc.set_ylim(-0.05, 0.72); axc.spines["bottom"].set_bounds(0, 6)
+axc.set_ylabel("W→S excess (human)", fontsize=6.3, labelpad=2)
+letter(fig, 0.0, TOP, "a")
+
+# ---------------------------------------------------------------- b: three events on one timeline
+ax = fig.add_axes([0.56, 0.60, 0.43, 0.33])
 t = np.linspace(0, 7, 700)
-T_orig, T_fix, T_off = 3.3, 2.3, 2.8
+T_orig, T_fix = 3.3, 2.3
 x = np.clip((T_orig - t) / (T_orig - T_fix), 0, 1)
 x = 0.5 - 0.5 * np.cos(np.pi * x)
 for lo, hi in ((5.5, 6.3), (0.55, 0.75)):
@@ -184,20 +270,15 @@ ax.set_xlim(7, 0); ax.set_ylim(-0.32, 1.42)
 ax.set_yticks([]); ax.spines["left"].set_visible(False)
 ax.set_xticks(range(0, 8)); ax.set_xlabel("Mya", labelpad=1)
 ax.spines["bottom"].set_position(("data", -0.32))
-bb = ax.get_position()
-fx = lambda v: bb.x0 + bb.width * (7 - v) / 7
-fy = lambda v: bb.y0 + bb.height * (v + 0.32) / 1.74
-chrom_icon(fig, fx(5.05), fy(0.66), 0.085, "ancestral")         # under the teal plateau (older side)
-chrom_icon(fig, fx(2.2), fy(0.66), 0.07, "fused")             # under the crimson plateau (recent side)
-letter(fig, 0.0, 0.985, "a")
+letter(fig, 0.515, TOP, "b")
 
-# ---------------------------------------------------------------- b: what each line of evidence dates
-ax = fig.add_axes([0.62, 0.60, 0.36, 0.32])
+# ---------------------------------------------------------------- c: what each line of evidence dates
+ax = fig.add_axes([0.12, 0.08, 0.36, 0.34])
 rows = [("sd", 5.0, None, C["ends"], "arrow"), ("ils", 8.6, 6.0, C["ends"], "bar"),
         ("ws", 3.8, 1.5, C["f2b"], "bar"), ("relic", 0.65, None, C["human"], "arrow")]
-ys = [3, 2, 1, 0]
 blab = {"sd": "age of junction duplications", "ils": "lineage sorting at the flanks",
         "ws": "W→S footprint: switch-off (this study)", "relic": "relic centromere in archaic genomes"}
+ys = [3, 2, 1, 0]
 for (kind, a0, a1, col, st), y in zip(rows, ys):
     ax.text(9.2, y + 0.22, blab[kind], ha="left", va="bottom", fontsize=6, color=col if kind in ("ws", "relic") else C["ink2"])
     if st == "arrow":
@@ -216,38 +297,10 @@ for (kind, *_), y in zip(rows, ys):
         chrom_icon(fig, bb.x0 - 0.085, yc - RH / 2, 0.07, "relic")
     else:
         {"sd": g_sd, "ils": g_ils, "ws": g_ws}[kind](icon(fig, [bb.x0 - 0.085, yc - 0.03, 0.07, 0.06]))
-letter(fig, 0.515, 0.985, "b")
-
-# ---------------------------------------------------------------- c: the clock
-chrom_icon(fig, 0.06, 0.32, 0.16, "ancestral")
-fig.text(0.14, 0.355, "ancestral 2A + 2B", ha="center", va="bottom", fontsize=6, color=C["ink2"])
-fig.text(0.14, 0.195, "human chromosome 2", ha="center", va="top", fontsize=6, color=C["ink2"])
-arrow(fig, (0.14, 0.305), (0.14, 0.255))
-chrom_icon(fig, 0.06, 0.22, 0.16, "fused")
-ax = fig.add_axes([0.29, 0.08, 0.18, 0.34])
-ts = np.linspace(0, 6, 200)
-ax.plot(ts, ts * 0.1, color=C["ends"], lw=1.5)
-ax.plot(ts, np.minimum(ts, 6 - T_off) * 0.1, color=C["f2b"], lw=1.8)
-ax.plot(ts, ts * 0, color=C["interior"], lw=1.3, ls=(0, (3, 2)))
-ax.axvline(6 - T_off, color=C["ink2"], lw=0.6, ls=(0, (2, 2)))
-ax.annotate("", xy=(6.3, 0.6), xytext=(6.3, 0.32), arrowprops=dict(arrowstyle="<->", color=C["ink"], lw=0.8))
-ax.text(6.5, 0.46, "$T_{off}/T_s$", fontsize=6.4, va="center")
-ax.set_xticks([0, 6 - T_off, 6], ["$T_s$", "$T_{off}$", "0"]); ax.set_yticks([])
-ax.set_xlim(0, 8.2); ax.set_ylim(-0.08, 0.72)
-ax.spines["bottom"].set_bounds(0, 6)
-ax.set_ylabel("W→S excess", fontsize=6.6)
-bb = ax.get_position()
-xr = lambda v: bb.x0 + bb.width * v / 8.2
-yr = lambda v: bb.y0 + bb.height * (v + 0.08) / 0.8
-# line-end glyphs: real end (capped), fusion flank (junction), interior (plain)
-for yv, kind, dy, lab, col in ((0.6, "end", 0.008, "real ends", C["ends"]), (0.32, "fused", -0.03, "fusion flanks", C["f2b"]),
-                               (0.0, "plain", 0.006, "interior", C["ink2"])):
-    chrom_icon(fig, xr(6.1), yr(yv) + dy, 0.045, kind, junction=0.08)
-    fig.text(xr(6.1) + 0.05, yr(yv) + dy + RH / 2, lab, ha="left", va="center", fontsize=6, color=col)
 letter(fig, 0.0, 0.47, "c")
 
-# ---------------------------------------------------------------- d: data and approach
-ax = fig.add_axes([0.54, 0.06, 0.13, 0.37]); ax.axis("off"); ax.set_xlim(0, 3.2); ax.set_ylim(1.9, 5.3)
+# ---------------------------------------------------------------- d: data and approach, top-to-bottom flow
+ax = fig.add_axes([0.53, 0.05, 0.13, 0.38]); ax.axis("off"); ax.set_xlim(0, 3.2); ax.set_ylim(1.9, 5.3)
 tips = {"H": (5.0, C["human"]), "C": (4.35, C["pan"]), "B": (3.75, C["pan"]), "G": (3.05, C["gorilla"]),
         "O": (2.4, C["orang"])}
 xt = 2.5
@@ -261,21 +314,21 @@ for k, (y, col) in tips.items():
     ax.text(xt + 0.1, y, k, va="center", fontsize=6.8, color=col, fontweight="bold")
 for p in (anc4, anc5, anc3):
     ax.plot(*p, "o", ms=3.2, color="white", mec=C["ink"], mew=0.8, zorder=3)
-ix, iw = 0.795, 0.06
-ys_d = (0.35, 0.275, 0.2, 0.125)
-for fn, y, lab in zip((g_genomes, g_map, g_population, g_archaic), ys_d,
-                     ("T2T ape genomes", "recombination maps", "1000 Genomes", "archaic genomes")):
-    fn(icon(fig, [ix, y, iw, 0.055], equal=fn not in (g_genomes, g_map, g_archaic)))
-    fig.text(ix - 0.006, y + 0.0275, lab, ha="right", va="center", fontsize=5.8, color=C["ink2"])
-    arrow(fig, (ix + iw + 0.004, y + 0.0275), (0.874, 0.265), head=False, col=C["band"], lw=0.9)
-g_model(icon(fig, [0.872, 0.23, 0.075, 0.07]))
-arrow(fig, (0.9, 0.225), (0.878, 0.165))
-arrow(fig, (0.92, 0.225), (0.952, 0.165))
-g_target(icon(fig, [0.845, 0.105, 0.055, 0.055]))
-g_dice(icon(fig, [0.93, 0.105, 0.055, 0.055]))
-fig.text(0.91, 0.305, "pooled model", ha="center", va="bottom", fontsize=6, color=C["ink"])
-fig.text(0.8725, 0.098, "calibration\non real ends", ha="center", va="top", fontsize=5.8, color=C["ink2"], linespacing=1.0)
-fig.text(0.9575, 0.098, "simulations", ha="center", va="top", fontsize=5.8, color=C["ink2"])
+# flow
+xs = [0.715, 0.785, 0.855, 0.925]
+iw, ih, yi = 0.052, 0.05, 0.345
+for fn, xx, lab in zip((g_genomes, g_map, g_population, g_archaic), xs,
+                       ("T2T apes", "recombination\nmaps", "1000\nGenomes", "archaic\ngenomes")):
+    fn(icon(fig, [xx - iw / 2, yi, iw, ih], equal=fn not in (g_genomes, g_map, g_archaic)))
+    fig.text(xx, yi + ih + 0.008, lab, ha="center", va="bottom", fontsize=5.6, color=C["ink2"], linespacing=1.0)
+    arrow(fig, (xx, yi - 0.005), (0.82, 0.29), head=False, col=C["interior"], lw=0.8)
+ym = 0.215
+g_model(icon(fig, [0.79, ym, 0.06, 0.07]))
+fig.text(0.855, ym + 0.035, "pooled model\n(39 real ends,\n3 lineages)", ha="left", va="center", fontsize=5.8, color=C["ink"], linespacing=1.05)
+arrow(fig, (0.81, ym - 0.005), (0.775, 0.145)); arrow(fig, (0.83, ym - 0.005), (0.865, 0.145))
+g_target(icon(fig, [0.75, 0.09, 0.05, 0.05])); g_dice(icon(fig, [0.84, 0.09, 0.05, 0.05]))
+fig.text(0.775, 0.083, "calibration\non real ends", ha="center", va="top", fontsize=5.6, color=C["ink2"], linespacing=1.0)
+fig.text(0.865, 0.083, "simulations", ha="center", va="top", fontsize=5.6, color=C["ink2"])
 letter(fig, 0.515, 0.47, "d")
 
 fig.savefig(f"{OUT}/Fig1_overview.pdf", bbox_inches="tight", pad_inches=0.02)

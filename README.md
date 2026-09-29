@@ -75,7 +75,7 @@ Step identifiers (A1, A4, …) match the Methods and the file names in `results/
 
 | Item | Command | Inputs in `results/` |
 |---|---|---|
-| Fig. 1 (overview) | `F_schematic.py` | none (schematic) |
+| Fig. 1 (overview) | `F_schematic.py` | `workflow/09_figures/assets/` (hg38 chr2 cytobands; public-domain PhyloPic silhouettes, see `SOURCES.txt`) |
 | Fig. 2 (present day) | `F_make_figures.py --only 1` | A5, A6, A12c, A7 |
 | Fig. 3 (pooled model) | `F_make_figures.py --only 2` | A3, A4, A15 |
 | Fig. 4 (lineage sorting) | `F_make_figures.py --only 3` | A8, A16, A10 |

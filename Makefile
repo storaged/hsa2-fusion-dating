@@ -12,7 +12,7 @@ help:
 
 figures:
 	mkdir -p $(OUT)
-	$(PYTHON) -W ignore $(FIG)/F_schematic.py $(OUT)
+	$(PYTHON) -W ignore $(FIG)/F_schematic.py $(OUT) $(FIG)/assets
 	$(PYTHON) -W ignore $(FIG)/F_make_figures.py
 	$(PYTHON) -W ignore $(FIG)/F_supp_figures.py
 	$(PYTHON) -W ignore $(FIG)/F_supp_tables.py
