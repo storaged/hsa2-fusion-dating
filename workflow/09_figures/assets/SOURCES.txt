@@ -1,5 +1,6 @@
 Silhouettes from PhyloPic (https://www.phylopic.org), public domain:
 chimp.png        7133ab33-cc79-4d7c-9656-48717359abb4  Jonathan Lawley      CC0 1.0
+bonobo.png       f06b4dd0-094e-4f37-9105-25fdb4eb1b02  T. Michael Keesey    CC0 1.0
 gorilla.png      142e0571-3b5f-443d-a887-b572a224ea22  Margot Michaud       CC0 1.0
 human.png        c089caae-43ef-4e4e-bf26-973dd4cb65c5  T. Michael Keesey    CC0 1.0
 neanderthal.png  312a3222-7e8d-4fe0-91e7-2923dde20389  T. Michael Keesey    Public Domain Mark 1.0

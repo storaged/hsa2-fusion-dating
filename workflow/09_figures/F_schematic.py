@@ -30,7 +30,7 @@ mpl.rcParams.update({"font.family": ["Lato", "DejaVu Sans"], "font.size": 7, "ax
                      "ytick.color": C["ink2"], "xtick.labelsize": 6.5, "ytick.labelsize": 6.5,
                      "axes.spines.top": False, "axes.spines.right": False, "pdf.fonttype": 42,
                      "mathtext.fontset": "custom", "mathtext.rm": "Lato", "mathtext.it": "Lato:italic"})
-FIG_W, FIG_H = 180 * MM, 100 * MM
+FIG_W, FIG_H = 180 * MM, 88 * MM
 
 
 # ---------------------------------------------------------------- glyphs (unit box, equal aspect)
@@ -265,10 +265,11 @@ ax.text(L0, y_hum - H / 2 - 0.05, "human chr2", ha="left", va="top", fontsize=6.
 bb = ax.get_position()
 fxa = lambda v: bb.x0 + bb.width * v
 fya = lambda v: bb.y0 + bb.height * v
-silhouette(fig, "chimp", [fxa(0.28), fya(0.76), 0.035, 0.07]); silhouette(fig, "gorilla", [fxa(0.5), fya(0.76), 0.045, 0.07])
-silhouette(fig, "human", [fxa(0.37), fya(0.0), 0.018, 0.085]); silhouette(fig, "neanderthal", [fxa(0.47), fya(0.0), 0.018, 0.085])
+silhouette(fig, "chimp", [fxa(0.2), fya(0.77), 0.036, 0.075]); silhouette(fig, "bonobo", [fxa(0.39), fya(0.775), 0.052, 0.07])
+silhouette(fig, "gorilla", [fxa(0.62), fya(0.77), 0.046, 0.075])
+silhouette(fig, "human", [fxa(0.37), fya(-0.02), 0.018, 0.09]); silhouette(fig, "neanderthal", [fxa(0.47), fya(-0.02), 0.018, 0.09])
 # clock: square panel on the right
-axc = fig.add_axes([0.345, 0.575, 0.145, 0.265])
+axc = fig.add_axes([0.345, 0.585, 0.145, 0.30])
 ts = np.linspace(0, 6, 200)
 T_off = 2.8
 axc.plot(ts, ts * 0.1, color=C["ends"], lw=1.5)
@@ -286,7 +287,7 @@ axc.set_ylabel("W→S excess (human)", fontsize=6.3, labelpad=2)
 letter(fig, 0.0, TOP, "a")
 
 # ---------------------------------------------------------------- b: three events on one timeline
-ax = fig.add_axes([0.56, 0.60, 0.43, 0.33])
+ax = fig.add_axes([0.56, 0.615, 0.43, 0.33])
 t = np.linspace(0, 7, 700)
 T_orig, T_fix = 3.3, 2.3
 x = np.clip((T_orig - t) / (T_orig - T_fix), 0, 1)
@@ -339,7 +340,7 @@ for (kind, *_), y in zip(rows, ys):
     if kind == "relic":
         chrom_icon(fig, bb.x0 - 0.085, yc - RH / 2, 0.07, "relic")
     else:
-        {"sd": g_sd, "ils": g_ils, "ws": g_ws}[kind](icon(fig, [bb.x0 - 0.085, yc - 0.03, 0.07, 0.06]))
+        {"sd": g_sd, "ils": g_ils, "ws": g_ws}[kind](icon(fig, [bb.x0 - 0.09, yc - 0.04, 0.08, 0.08]))
 letter(fig, 0.0, 0.47, "c")
 
 # ---------------------------------------------------------------- d: data and approach, top-to-bottom flow
