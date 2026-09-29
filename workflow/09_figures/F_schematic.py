@@ -65,7 +65,7 @@ RH = 0.022   # chromosome glyph thickness (figure fraction)
 def rod(a, x0, y, w, h=None, caps=(), junction=None, waist=None, col=None, lw=5.5):
     """chromosome drawn as a round-capped thick line (thickness in points, independent of box aspect)"""
     e = 0.06
-    a.plot([x0 + e, x0 + w - e], [y, y], color=col or C["rod"], lw=lw, solid_capstyle="round", clip_on=False)
+    a.plot([x0 + e, x0 + w - e], [y, y], color=col or C["rod"], lw=lw, solid_capstyle="butt", clip_on=False)
     for cx in caps:
         a.plot([cx - 0.022, cx + 0.022], [y, y], color=C["ink"], lw=lw, solid_capstyle="butt", clip_on=False)
     if junction is not None:
@@ -128,24 +128,32 @@ def g_archaic(a):
 
 
 def g_model(a):
-    xx = np.linspace(0.08, 0.92, 50)
-    a.plot(xx, 0.18 + 0.64 * np.exp(-(xx - 0.08) / 0.28), color=C["ink"], lw=1.2)
-    rng = np.random.default_rng(3)
-    for x0 in np.linspace(0.12, 0.86, 9):
-        a.plot(x0, 0.18 + 0.64 * np.exp(-(x0 - 0.08) / 0.28) + rng.normal(0, 0.07), "o", ms=2.0, color=C["ends"])
+    """three lineage kernels sharing one end strength; fusion-flank points below (retained fraction)"""
+    xx = np.linspace(0.06, 0.94, 60)
+    for col, amp in ((C["pan"], 0.72), (C["gorilla"], 0.66), (C["human"], 0.6)):
+        a.plot(xx, 0.12 + amp * np.exp(-(xx - 0.06) / 0.3), color=col, lw=1.1)
+    for x0 in (0.12, 0.22, 0.34, 0.48):
+        a.plot(x0, 0.12 + 0.32 * np.exp(-(x0 - 0.06) / 0.3), "s", ms=2.3, color=C["f2b"], mec="none")
+    a.plot([0.04, 0.96], [0.08, 0.08], color=C["ink2"], lw=0.5)
 
 
 def g_target(a):
-    for r, c in ((0.42, C["band"]), (0.28, "white"), (0.14, C["band"])):
-        a.add_patch(Circle((0.5, 0.5), r, fc=c, ec=C["ink2"], lw=0.5))
+    """calibration: intervals of real ends treated as fusions, crossing the true value 0"""
+    rng = np.random.default_rng(5)
+    for k, y in enumerate(np.linspace(0.12, 0.88, 8)):
+        c = rng.normal(0.5, 0.12)
+        col = C["ends"] if k != 6 else C["ink"]
+        a.plot([c - 0.22, c + 0.22] if k != 6 else [0.62, 0.92], [y, y], color=col, lw=1.0, solid_capstyle="butt")
     a.plot([0.5, 0.5], [0.04, 0.96], color=C["ink"], lw=0.9)
 
 
 def g_dice(a):
-    a.add_patch(FancyBboxPatch((0.14, 0.14), 0.72, 0.72, boxstyle="round,pad=0,rounding_size=0.12", fc="white",
-                               ec=C["ink2"], lw=0.8))
-    for x0, y0 in ((0.33, 0.67), (0.5, 0.5), (0.67, 0.33)):
-        a.add_patch(Circle((x0, y0), 0.06, fc=C["ink"], ec="none"))
+    """simulations: estimates on the identity line"""
+    a.plot([0.08, 0.92], [0.08, 0.92], color=C["ink2"], lw=0.6, ls=(0, (2, 1.5)))
+    for v in (0.15, 0.33, 0.5, 0.67, 0.85):
+        a.plot([v, v], [v - 0.08, v + 0.08], color=C["human"], lw=0.9)
+        a.plot(v, v + 0.01, "o", ms=2.4, color=C["human"], mec="none")
+    a.plot([0.08, 0.08, 0.92], [0.92, 0.08, 0.08], color=C["ink2"], lw=0.6)
 
 
 def arrow(fig, p0, p1, head=True, col=None, lw=0.8):
@@ -193,6 +201,33 @@ def ideogram(ax, x, y0, y1, start, end, width, telomeres=(True, True), junction=
         ax.plot(x + width * 0.95, Y(relic), marker="<", ms=3.2, color=C["ink2"], mec="none")
 
 
+def ideogram_h(ax, y, x0, x1, start, end, height, telomeres=(True, True), junction=None, relic=None, cen=None):
+    """horizontal G-banded chromosome for hg38 chr2 [start, end] Mb, drawn from x0 (left) to x1 (right)"""
+    sc = (x1 - x0) / (end - start)
+    X = lambda mb: x0 + (mb - start) * sc
+    for a, b, st in CB:
+        a, b = max(a, start), min(b, end)
+        if b > a:
+            ax.add_patch(Rectangle((X(a), y - height / 2), X(b) - X(a), height, fc=STAIN.get(st, "#f4f5f7"), ec="none"))
+    ax.add_patch(Rectangle((x0, y - height / 2), x1 - x0, height, fc="none", ec=C["ink2"], lw=0.5))
+    cap = 0.012
+    if telomeres[0]:
+        ax.add_patch(Rectangle((x0 - cap, y - height / 2), cap, height, fc=C["ink"], ec="none"))
+    if telomeres[1]:
+        ax.add_patch(Rectangle((x1, y - height / 2), cap, height, fc=C["ink"], ec="none"))
+    if cen is not None:
+        w = 3.5 * sc
+        for sgn in (-1, 1):
+            ye = y + sgn * (height / 2 + 0.004)
+            ax.add_patch(mpl.patches.Polygon([(X(cen) - w, ye), (X(cen), y + sgn * height * 0.12), (X(cen) + w, ye)],
+                                             closed=True, fc="white", ec=C["ink2"], lw=0.5, zorder=3))
+    if junction is not None:
+        ax.add_patch(Rectangle((X(junction) - 0.006, y - height * 0.8), 0.012, height * 1.6, fc=C["f2b"], ec="none", zorder=4))
+    if relic is not None:
+        ax.plot(X(relic), y - height * 0.95, marker="^", ms=3.2, color=C["ink2"], mec="none", clip_on=False)
+    return X
+
+
 def silhouette(fig, name, rect, color="#8a8f98"):
     img = plt.imread(f"{ASSETS}/{name}.png")
     rgba = np.zeros_like(img)
@@ -206,26 +241,34 @@ def silhouette(fig, name, rect, color="#8a8f98"):
 fig = plt.figure(figsize=(FIG_W, FIG_H))
 TOP, MID = 0.975, 0.5
 
-# ---------------------------------------------------------------- a: the problem and the clock
-ax = fig.add_axes([0.0, 0.535, 0.30, 0.325]); ax.axis("off"); ax.set_xlim(0, 1); ax.set_ylim(1.06, -0.02)
-yt, yb = 0.0, 0.97
-# ancestral 2A and 2B (apes); telomeres at all ends, own centromeres
-ideogram(ax, 0.13, yt, yt + (yb - yt) * FUS / CHRLEN, 0, FUS, 0.07, cen=CEN2A)
-ideogram(ax, 0.27, yt + 0.06, yt + 0.06 + (yb - yt) * (CHRLEN - FUS) / CHRLEN, FUS, CHRLEN, 0.07, cen=CEN2B)
-ax.text(0.13, yt + (yb - yt) * FUS / CHRLEN + 0.03, "2A", ha="center", va="top", fontsize=6.3)
-ax.text(0.27, yt + 0.06 + (yb - yt) * (CHRLEN - FUS) / CHRLEN + 0.03, "2B", ha="center", va="top", fontsize=6.3)
-ax.annotate("", xy=(0.56, 0.5), xytext=(0.38, 0.5), arrowprops=dict(arrowstyle="-|>", color=C["ink2"], lw=0.9))
-ax.text(0.47, 0.46, "fusion", ha="center", va="bottom", fontsize=6, color=C["ink2"])
-# human chromosome 2
-ideogram(ax, 0.72, yt, yb, 0, CHRLEN, 0.07, junction=FUS, relic=CEN2B, cen=CEN2A)
-ax.text(0.72, yb + 0.03, "human chr2", ha="center", va="top", fontsize=6.3)
-ax.text(0.80, yt + (yb - yt) * FUS / CHRLEN - 0.005, "2q13 junction", ha="left", va="bottom", fontsize=5.8, color=C["f2b"])
-ax.text(0.80, yt + (yb - yt) * CEN2B / CHRLEN + 0.01, "relic\ncentromere", ha="left", va="top", fontsize=5.8, color=C["ink2"], linespacing=1.0)
-# silhouettes: apes above the ancestral pair, humans above chr2
-silhouette(fig, "chimp", [0.022, 0.875, 0.04, 0.075]); silhouette(fig, "gorilla", [0.064, 0.875, 0.05, 0.075])
-silhouette(fig, "human", [0.196, 0.87, 0.02, 0.085]); silhouette(fig, "neanderthal", [0.218, 0.87, 0.02, 0.085])
-# clock: W->S excess along the human branch
-axc = fig.add_axes([0.33, 0.57, 0.13, 0.33])
+# ---------------------------------------------------------------- a: the fusion (top to bottom) and the clock
+ax = fig.add_axes([0.02, 0.50, 0.27, 0.46]); ax.axis("off"); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+H = 0.075                                     # ideogram thickness (axes fraction)
+L0, L1 = 0.03, 0.97                           # chr2 extent; 2A + gap + 2B spans the same
+gap = 0.08
+sc = (L1 - L0 - gap) / CHRLEN
+a1 = L0 + FUS * sc
+y_anc, y_hum = 0.66, 0.30
+X2a = ideogram_h(ax, y_anc, L0, a1, 0, FUS, H, cen=CEN2A)
+X2b = ideogram_h(ax, y_anc, a1 + gap, L1, FUS, CHRLEN, H, cen=CEN2B)
+ax.text(L0, y_anc - H / 2 - 0.035, "2A", ha="left", va="top", fontsize=6.3)
+ax.text(L1, y_anc - H / 2 - 0.035, "2B", ha="right", va="top", fontsize=6.3)
+# funnel: the two chromosomes narrow onto the junction of chromosome 2
+xj = L0 + FUS * (L1 - L0) / CHRLEN
+ax.add_patch(mpl.patches.Polygon([(L0, y_anc - H / 2 - 0.1), (L1, y_anc - H / 2 - 0.1), (xj + 0.035, y_hum + H / 2 + 0.085),
+                                  (xj - 0.035, y_hum + H / 2 + 0.085)], closed=True, fc=C["band"], ec="none", zorder=0))
+ax.text(xj, (y_anc - H / 2 - 0.1 + y_hum + H / 2 + 0.085) / 2 + 0.01, "fusion", ha="center", va="center", fontsize=6, color=C["ink2"])
+X2 = ideogram_h(ax, y_hum, L0, L1, 0, CHRLEN, H, junction=FUS, relic=CEN2B, cen=CEN2A)
+ax.text(X2(FUS), y_hum + H / 2 + 0.015, "2q13", ha="center", va="bottom", fontsize=5.8, color=C["f2b"])
+ax.text(X2(CEN2B) + 0.02, y_hum - H / 2 - 0.05, "relic centromere", ha="left", va="top", fontsize=5.8, color=C["ink2"])
+ax.text(L0, y_hum - H / 2 - 0.05, "human chr2", ha="left", va="top", fontsize=6.3)
+bb = ax.get_position()
+fxa = lambda v: bb.x0 + bb.width * v
+fya = lambda v: bb.y0 + bb.height * v
+silhouette(fig, "chimp", [fxa(0.28), fya(0.76), 0.035, 0.07]); silhouette(fig, "gorilla", [fxa(0.5), fya(0.76), 0.045, 0.07])
+silhouette(fig, "human", [fxa(0.37), fya(0.0), 0.018, 0.085]); silhouette(fig, "neanderthal", [fxa(0.47), fya(0.0), 0.018, 0.085])
+# clock: square panel on the right
+axc = fig.add_axes([0.345, 0.575, 0.145, 0.265])
 ts = np.linspace(0, 6, 200)
 T_off = 2.8
 axc.plot(ts, ts * 0.1, color=C["ends"], lw=1.5)
@@ -234,9 +277,9 @@ axc.plot(ts, ts * 0, color=C["interior"], lw=1.3, ls=(0, (3, 2)))
 axc.axvline(6 - T_off, color=C["ink2"], lw=0.6, ls=(0, (2, 2)))
 axc.annotate("", xy=(6.25, 0.6), xytext=(6.25, 0.32), arrowprops=dict(arrowstyle="<->", color=C["ink"], lw=0.8))
 axc.text(6.4, 0.46, "lost:\n$T_{off}/T_s$", fontsize=6, va="center", linespacing=1.1)
-axc.text(3.1, 0.47, "real ends", fontsize=6, color=C["ends"], ha="right")
-axc.text(4.9, 0.27, "fusion\nflanks", fontsize=6, color=C["f2b"], ha="center", va="top", linespacing=1.0)
-axc.text(4.9, 0.02, "interior", fontsize=6, color=C["ink2"], ha="center", va="bottom")
+axc.text(3.0, 0.45, "real ends", fontsize=6, color=C["ends"], ha="right")
+axc.text(4.6, 0.26, "fusion\nflanks", fontsize=6, color=C["f2b"], ha="center", va="top", linespacing=1.0)
+axc.text(4.6, 0.02, "interior", fontsize=6, color=C["ink2"], ha="center", va="bottom")
 axc.set_xticks([0, 6 - T_off, 6], ["split", "$T_{off}$", "now"]); axc.set_yticks([])
 axc.set_xlim(0, 8.3); axc.set_ylim(-0.05, 0.72); axc.spines["bottom"].set_bounds(0, 6)
 axc.set_ylabel("W→S excess (human)", fontsize=6.3, labelpad=2)
@@ -314,21 +357,34 @@ for k, (y, col) in tips.items():
     ax.text(xt + 0.1, y, k, va="center", fontsize=6.8, color=col, fontweight="bold")
 for p in (anc4, anc5, anc3):
     ax.plot(*p, "o", ms=3.2, color="white", mec=C["ink"], mew=0.8, zorder=3)
-# flow
+# flow with orthogonal connectors
+def seg(p0, p1, head=False, col=C["ink2"]):
+    fig.patches.append(FancyArrowPatch(p0, p1, transform=fig.transFigure, arrowstyle="-|>" if head else "-",
+                                       mutation_scale=7, color=col, lw=0.8, shrinkA=0, shrinkB=0))
+
+
 xs = [0.715, 0.785, 0.855, 0.925]
-iw, ih, yi = 0.052, 0.05, 0.345
+iw, ih, yi = 0.052, 0.045, 0.355
+xc = 0.82
 for fn, xx, lab in zip((g_genomes, g_map, g_population, g_archaic), xs,
                        ("T2T apes", "recombination\nmaps", "1000\nGenomes", "archaic\ngenomes")):
     fn(icon(fig, [xx - iw / 2, yi, iw, ih], equal=fn not in (g_genomes, g_map, g_archaic)))
     fig.text(xx, yi + ih + 0.008, lab, ha="center", va="bottom", fontsize=5.6, color=C["ink2"], linespacing=1.0)
-    arrow(fig, (xx, yi - 0.005), (0.82, 0.29), head=False, col=C["interior"], lw=0.8)
-ym = 0.215
-g_model(icon(fig, [0.79, ym, 0.06, 0.07]))
-fig.text(0.855, ym + 0.035, "pooled model\n(39 real ends,\n3 lineages)", ha="left", va="center", fontsize=5.8, color=C["ink"], linespacing=1.05)
-arrow(fig, (0.81, ym - 0.005), (0.775, 0.145)); arrow(fig, (0.83, ym - 0.005), (0.865, 0.145))
-g_target(icon(fig, [0.75, 0.09, 0.05, 0.05])); g_dice(icon(fig, [0.84, 0.09, 0.05, 0.05]))
-fig.text(0.775, 0.083, "calibration\non real ends", ha="center", va="top", fontsize=5.6, color=C["ink2"], linespacing=1.0)
-fig.text(0.865, 0.083, "simulations", ha="center", va="top", fontsize=5.6, color=C["ink2"])
+    seg((xx, yi - 0.006), (xx, 0.325))
+bus_in = 0.325
+seg((xs[0], bus_in), (xs[-1], bus_in))
+ym, mh = 0.225, 0.07
+seg((xc, bus_in), (xc, ym + mh + 0.004), head=True)
+g_model(icon(fig, [xc - 0.04, ym, 0.08, mh], equal=False))
+fig.text(xc + 0.048, ym + mh / 2, "pooled model\n39 ends × 3 lineages", ha="left", va="center", fontsize=5.8, color=C["ink"], linespacing=1.1)
+bus_out = 0.19
+xcal, xsim = 0.765, 0.875
+seg((xc, ym - 0.004), (xc, bus_out)); seg((xcal, bus_out), (xsim, bus_out))
+yo, oh = 0.1, 0.055
+seg((xcal, bus_out), (xcal, yo + oh + 0.004), head=True); seg((xsim, bus_out), (xsim, yo + oh + 0.004), head=True)
+g_target(icon(fig, [xcal - 0.03, yo, 0.06, oh], equal=False)); g_dice(icon(fig, [xsim - 0.03, yo, 0.06, oh], equal=False))
+fig.text(xcal, yo - 0.008, "calibration\n95% coverage", ha="center", va="top", fontsize=5.6, color=C["ink2"], linespacing=1.05)
+fig.text(xsim, yo - 0.008, "simulations\n15/15 recovered", ha="center", va="top", fontsize=5.6, color=C["ink2"], linespacing=1.05)
 letter(fig, 0.515, 0.47, "d")
 
 fig.savefig(f"{OUT}/Fig1_overview.pdf", bbox_inches="tight", pad_inches=0.02)
